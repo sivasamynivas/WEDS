@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MySQL Quiz: DCL, JOINs, String Functions & GROUP BY</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eef2ef; --panel:#ffffff; --ink:#15302b; --muted:#5d716c; --line:#d3ddd9;
+  --accent:#1f4fe0; --accent-ink:#ffffff; --good:#12805c; --good-bg:#dff3ea;
+  --bad:#c0392b; --bad-bg:#fbe4e0; --code:#e6ede9;
+  --head:"Bricolage Grotesque","Trebuchet MS",sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1c19; --panel:#172a26; --ink:#e6f1ed; --muted:#93aaa3; --line:#2a423c;
+    --accent:#7a9bff; --accent-ink:#0b1430; --good:#4fd1a1; --good-bg:#17382e;
+    --bad:#ff8a7a; --bad-bg:#3d1f1b; --code:#223833;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1c19; --panel:#172a26; --ink:#e6f1ed; --muted:#93aaa3; --line:#2a423c;
+  --accent:#7a9bff; --accent-ink:#0b1430; --good:#4fd1a1; --good-bg:#17382e;
+  --bad:#ff8a7a; --bad-bg:#3d1f1b; --code:#223833;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:400 17px/1.55 var(--body);min-height:100vh}
+.wrap{max-width:760px;margin:0 auto;padding:28px 20px 64px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}
+.brand{font:700 18px var(--head);letter-spacing:.2px}
+.brand span{color:var(--accent)}
+button{font:inherit;color:inherit;cursor:pointer}
+.ghost{background:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px;color:var(--muted)}
+.ghost:hover{color:var(--ink);border-color:var(--ink)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1{font:800 clamp(34px,7vw,54px)/1.05 var(--head);margin:0 0 14px;letter-spacing:-1px}
+h2{font:700 26px/1.2 var(--head);margin:0 0 6px}
+.lead{color:var(--muted);max-width:56ch;margin:0 0 28px}
+code{font:500 .88em var(--mono);background:var(--code);padding:1px 6px;border-radius:5px}
+.topics{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:24px}
+.topic{background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:14px;text-align:left}
+.topic b{display:block;font:700 17px var(--head)}
+.topic small{color:var(--muted)}
+.topic[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.primary{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:13px 26px;font:700 17px var(--head)}
+.primary:hover{filter:brightness(1.1)}
+.primary:disabled{opacity:.4;cursor:not-allowed}
+.hint{color:var(--muted);font-size:14px;margin-top:18px}
+/* result grid: the signature element */
+.grid{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.cell{width:22px;height:22px;border-radius:5px;background:var(--line);transition:background .25s}
+.cell.cur{outline:2px solid var(--accent);outline-offset:1px}
+.cell.ok{background:var(--good)} .cell.no{background:var(--bad)}
+.meta{display:flex;justify-content:space-between;color:var(--muted);font-size:14px;margin-bottom:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px}
+.tag{display:inline-block;font:500 13px var(--mono);color:var(--accent);margin-bottom:10px}
+.q{font:700 clamp(21px,4vw,26px)/1.3 var(--head);margin:0 0 22px}
+.opts{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.opt{width:100%;display:flex;gap:14px;align-items:flex-start;text-align:left;background:var(--bg);border:2px solid var(--line);border-radius:10px;padding:13px 15px}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt .k{flex:none;width:28px;height:28px;border-radius:7px;background:var(--panel);border:1px solid var(--line);display:grid;place-items:center;font:500 14px var(--mono)}
+.opt.right{border-color:var(--good);background:var(--good-bg)}
+.opt.right .k{background:var(--good);color:#fff;border-color:var(--good)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-bg)}
+.opt.wrong .k{background:var(--bad);color:#fff;border-color:var(--bad)}
+.opt:disabled{cursor:default}
+.fb{margin-top:18px;font-weight:500;min-height:1.5em}
+.fb.ok{color:var(--good)} .fb.no{color:var(--bad)}
+.actions{display:flex;justify-content:space-between;align-items:center;margin-top:22px;gap:12px}
+.score{font:800 clamp(64px,16vw,104px)/1 var(--head);letter-spacing:-3px;margin:0}
+.score small{font-size:.35em;color:var(--muted);letter-spacing:0}
+.bars{display:grid;gap:12px;margin:26px 0}
+.bar{display:grid;grid-template-columns:130px 1fr 52px;gap:12px;align-items:center;font-size:15px}
+.track{height:12px;background:var(--line);border-radius:6px;overflow:hidden}
+.fill{height:100%;background:var(--accent);border-radius:6px;transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.review{margin-top:30px}
+.miss{background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--bad);border-radius:10px;padding:14px 16px;margin-bottom:10px;font-size:16px}
+.miss p{margin:2px 0}
+.miss .yours{color:var(--bad)} .miss .corr{color:var(--good)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.secondary{background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:11px 20px;font:700 16px var(--head)}
+.secondary:hover{border-color:var(--accent)}
+[hidden]{display:none!important}
+@media (max-width:520px){.bar{grid-template-columns:100px 1fr 44px}.card{padding:18px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">SQL<span>/</span>Drill</div>
+    <button class="ghost" id="theme" aria-label="Toggle light or dark theme">Theme</button>
+  </header>
+
+  <!-- START -->
+  <section id="start">
+    <h1>Test your MySQL.</h1>
+    <p class="lead">30 multiple-choice questions on access control, joins, string functions and grouping. Pick the topics you want to practice, then answer one question at a time.</p>
+    <div class="topics" id="topics" role="group" aria-label="Choose topics"></div>
+    <button class="primary" id="go">Start quiz</button>
+    <p class="hint">Keyboard: press A, B, C or D to answer, Enter for the next question.</p>
+  </section>
+
+  <!-- QUIZ -->
+  <section id="quiz" hidden>
+    <div class="grid" id="grid" aria-hidden="true"></div>
+    <div class="meta"><span id="count"></span><span id="live"></span></div>
+    <div class="card">
+      <div class="tag" id="tag"></div>
+      <h2 class="q" id="q"></h2>
+      <div class="opts" id="opts"></div>
+      <div class="fb" id="fb" aria-live="polite"></div>
+      <div class="actions">
+        <button class="ghost" id="quit">End quiz</button>
+        <button class="primary" id="next" disabled>Next question</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="done" hidden>
+    <p class="tag" id="msg"></p>
+    <p class="score" id="score"></p>
+    <div class="bars" id="bars"></div>
+    <div class="row">
+      <button class="primary" id="again">Try again</button>
+      <button class="secondary" id="retry">Retry missed questions</button>
+      <button class="secondary" id="home">Change topics</button>
+    </div>
+    <div class="review" id="review"></div>
+  </section>
+</div>
+
+<script>
+const TOPICS=["DCL","JOINs","String functions","GROUP BY"];
+const L="ABCD";
+// [topic, question, options, correct index]
+const Q=[
+[0,"Which two commands are the primary DCL commands in MySQL?",["SELECT and INSERT","COMMIT and ROLLBACK","CREATE and ALTER","GRANT and REVOKE"],3],
+[0,"What does `GRANT SELECT ON company_db.* TO a user` allow?",["Delete users from MySQL","Change the root password","Read data from all tables in company_db","Insert into every database"],2],
+[0,"Which command removes a privilege from a MySQL user?",["DROP","REVOKE","REMOVE","DELETE"],1],
+[0,"Which statement checks privileges assigned to a MySQL account?",["SHOW GRANTS FOR the account","SHOW PRIVILEGES user","CHECK GRANTS user","DISPLAY ACCESS user"],0],
+[0,"A data analyst needs only read access to production tables. Which privilege best follows least privilege?",["ALL PRIVILEGES","DROP","DELETE","SELECT"],3],
+[0,"Which command grants INSERT permission on a specific table?",["ALLOW INSERT employees","SET INSERT ON employees","GRANT INSERT ON company_db.employees TO the user","GIVE INSERT TO employees"],2],
+[0,"What is the main purpose of REVOKE?",["Rename a database","Remove previously granted privileges","Create a table","Combine tables"],1],
+[0,"Which principle means users receive only the permissions required for their work?",["Least privilege","Data duplication","Full access","Cartesian access"],0],
+[1,"Which JOIN returns only rows with matches in both tables?",["LEFT JOIN","RIGHT JOIN","CROSS JOIN","INNER JOIN"],3],
+[1,"In `FROM employees e LEFT JOIN departments d`, which is the left table?",["Both tables","Neither table","employees","departments"],2],
+[1,"Which JOIN returns all rows from the left table and matching rows from the right table?",["CROSS JOIN","LEFT JOIN","INNER JOIN","RIGHT JOIN"],1],
+[1,"How can FULL OUTER JOIN behavior be simulated in MySQL?",["LEFT JOIN UNION RIGHT JOIN","INNER JOIN WHERE","CROSS JOIN GROUP BY","SELF JOIN HAVING"],0],
+[1,"If table A has 5 rows and table B has 4 rows, how many rows can a CROSS JOIN produce?",["9","5","4","20"],3],
+[1,"What is the purpose of the ON clause in a JOIN?",["Group rows","Rename columns","Specify how the tables are related","Sort the result"],2],
+[1,"What does a SELF JOIN mean?",["Joining without an ON condition","Joining a table with itself","Joining two databases","Joining only primary keys"],1],
+[1,"Which query correctly joins employees and departments using department_id?",["`SELECT * FROM employees e INNER JOIN departments d ON e.department_id = d.department_id;`","`SELECT * FROM employees e JOIN departments d ON e.employee_id = d.department_name;`","`SELECT * FROM employees e WHERE e.department_id JOIN d.department_id;`","`SELECT * FROM employees JOIN departments USING salary;`"],0],
+[2,"Which function converts text to uppercase in MySQL?",["`LOWER()`","`CAPITAL()`","`TOPPER()`","`UPPER()`"],3],
+[2,"What is the result of `LENGTH('MYSQL')`?",["6","7","5","4"],2],
+[2,"Which function removes leading and trailing spaces?",["`STRIP()`","`TRIM()`","`SPACE()`","`CLEAN()`"],1],
+[2,"What is the result of `CONCAT('Data','Science')`?",["DataScience","Data Science","Data-Science","Data,Science"],0],
+[2,"Which function replaces part of a string with another string?",["`CHANGE()`","`MODIFY()`","`SUBSTITUTE_TEXT()`","`REPLACE()`"],3],
+[2,"What does `SUBSTRING('DATABASE',1,4)` return?",["BASE","DATA B","DATA","DATAB"],2],
+[3,"What is the primary purpose of GROUP BY?",["Delete duplicate rows","Create groups for aggregate calculations","Filter individual rows before grouping","Arrange rows alphabetically only"],1],
+[3,"Which aggregate function counts rows?",["`COUNT()`","`SUM()`","`TOTAL()`","`NUMBER()`"],0],
+[3,"Which query correctly finds total salary for each department?",["`SELECT department_id, SUM(salary) FROM employees;`","`SELECT SUM(department_id), salary FROM employees;`","`GROUP employees BY department_id SELECT salary;`","`SELECT department_id, SUM(salary) FROM employees GROUP BY department_id;`"],3],
+[3,"Which clause filters grouped results after GROUP BY?",["ORDER BY","LIMIT","HAVING","WHERE"],2],
+[3,"Which aggregate function returns the average value?",["`MID()`","`AVG()`","`MEAN()`","`AVERAGE_VALUE()`"],1],
+[3,"Which query finds departments having more than 5 employees?",["`SELECT department_id, COUNT(*) FROM employees GROUP BY department_id HAVING COUNT(*) > 5;`","`SELECT department_id, COUNT(*) FROM employees WHERE COUNT(*) > 5 GROUP BY department_id;`","`SELECT department_id FROM employees HAVING COUNT(*) > 5;`","`SELECT COUNT(*) FROM employees ORDER BY department_id > 5;`"],0],
+[3,"Which aggregate function returns the largest value in a group?",["`MIN()`","`TOP()`","`HIGH()`","`MAX()`"],3],
+[3,"Which clause is used to arrange the grouped result from highest to lowest?",["GROUP BY ... DESC","WHERE ... DESC","ORDER BY ... DESC","HAVING ... DESC"],2]
+];
+
+const $=id=>document.getElementById(id);
+const esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const fmt=s=>esc(s).replace(/`([^`]+)`/g,"<code>$1</code>");
+const show=id=>["start","quiz","done"].forEach(s=>$(s).hidden=s!==id);
+
+let picked=new Set([0,1,2,3]), deck=[], i=0, answers=[], locked=false;
+
+// theme
+const root=document.documentElement;
+$("theme").onclick=()=>{
+  const dark=root.dataset.theme?root.dataset.theme==="dark":matchMedia("(prefers-color-scheme:dark)").matches;
+  root.dataset.theme=dark?"light":"dark";
+};
+
+// topic picker
+function drawTopics(){
+  $("topics").innerHTML=TOPICS.map((t,n)=>{
+    const c=Q.filter(q=>q[0]===n).length;
+    return `<button class="topic" data-n="${n}" aria-pressed="${picked.has(n)}"><b>${t}</b><small>${c} questions</small></button>`;
+  }).join("");
+  $("go").disabled=!picked.size;
+}
+$("topics").onclick=e=>{
+  const b=e.target.closest(".topic"); if(!b) return;
+  const n=+b.dataset.n; picked.has(n)?picked.delete(n):picked.add(n); drawTopics();
+};
+
+function begin(list){
+  deck=list; i=0; answers=new Array(deck.length).fill(null);
+  $("grid").innerHTML=deck.map(()=>'<div class="cell"></div>').join("");
+  show("quiz"); render();
+}
+$("go").onclick=()=>begin(Q.filter(q=>picked.has(q[0])));
+
+function render(){
+  locked=false;
+  const [t,q,o]=deck[i];
+  $("count").textContent=`Question ${i+1} of ${deck.length}`;
+  const right=answers.filter((a,n)=>a!==null&&a===deck[n][3]).length;
+  $("live").textContent=`${right} correct`;
+  $("tag").textContent=TOPICS[t];
+  $("q").innerHTML=fmt(q);
+  $("opts").innerHTML=o.map((x,n)=>`<button class="opt" data-n="${n}"><span class="k">${L[n]}</span><span>${fmt(x)}</span></button>`).join("");
+  $("fb").textContent=""; $("fb").className="fb";
+  $("next").disabled=true;
+  $("next").textContent=i===deck.length-1?"See results":"Next question";
+  [...$("grid").children].forEach((c,n)=>c.classList.toggle("cur",n===i));
+}
+
+function choose(n){
+  if(locked) return; locked=true;
+  const ans=deck[i][3]; answers[i]=n;
+  [...$("opts").children].forEach((b,k)=>{
+    b.disabled=true;
+    if(k===ans) b.classList.add("right");
+    else if(k===n) b.classList.add("wrong");
+  });
+  const ok=n===ans;
+  $("grid").children[i].classList.add(ok?"ok":"no");
+  $("fb").className="fb "+(ok?"ok":"no");
+  $("fb").textContent=ok?"Correct.":`Not quite. The correct answer is ${L[ans]}.`;
+  $("next").disabled=false; $("next").focus();
+  const right=answers.filter((a,k)=>a!==null&&a===deck[k][3]).length;
+  $("live").textContent=`${right} correct`;
+}
+$("opts").onclick=e=>{const b=e.target.closest(".opt"); if(b) choose(+b.dataset.n)};
+$("next").onclick=()=>{ if(i<deck.length-1){i++;render()} else finish() };
+$("quit").onclick=()=>{ if(answers.some(a=>a!==null)) finish(); else show("start") };
+
+document.addEventListener("keydown",e=>{
+  if($("quiz").hidden||e.metaKey||e.ctrlKey||e.altKey) return;
+  const k=e.key.toUpperCase();
+  if(L.includes(k)) choose(L.indexOf(k));
+  else if(e.key==="Enter"&&!$("next").disabled&&document.activeElement!==$("next")) $("next").click();
+});
+
+function finish(){
+  const done=deck.map((d,n)=>({d,a:answers[n]})).filter(x=>x.a!==null);
+  const right=done.filter(x=>x.a===x.d[3]).length, total=done.length;
+  const pct=Math.round(right/total*100);
+  $("score").innerHTML=`${right}<small> / ${total}</small>`;
+  $("msg").textContent=pct===100?"Perfect score.":pct>=80?"Strong result.":pct>=60?"Solid base. A few gaps to close.":"Keep practicing. Review the misses below.";
+  const by={};
+  done.forEach(x=>{const t=x.d[0];by[t]=by[t]||[0,0];by[t][1]++;if(x.a===x.d[3])by[t][0]++});
+  $("bars").innerHTML=Object.keys(by).map(t=>{
+    const [r,c]=by[t],p=Math.round(r/c*100);
+    return `<div class="bar"><span>${TOPICS[t]}</span><div class="track"><div class="fill" style="width:0" data-w="${p}"></div></div><span>${r}/${c}</span></div>`;
+  }).join("");
+  const missed=done.filter(x=>x.a!==x.d[3]);
+  $("review").innerHTML=missed.length?`<h2>Review your misses</h2>`+missed.map(x=>
+    `<div class="miss"><p><b>${fmt(x.d[1])}</b></p><p class="yours">Your answer: ${L[x.a]}. ${fmt(x.d[2][x.a])}</p><p class="corr">Correct: ${L[x.d[3]]}. ${fmt(x.d[2][x.d[3]])}</p></div>`).join(""):"";
+  $("retry").hidden=!missed.length;
+  $("retry").onclick=()=>begin(missed.map(x=>x.d));
+  show("done");
+  requestAnimationFrame(()=>requestAnimationFrame(()=>
+    document.querySelectorAll(".fill").forEach(f=>f.style.width=f.dataset.w+"%")));
+  scrollTo(0,0);
+}
+$("again").onclick=()=>begin(Q.filter(q=>picked.has(q[0])));
+$("home").onclick=()=>{drawTopics();show("start")};
+
+drawTopics();
+</script>
+</body>
+</html>
